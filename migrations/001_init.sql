@@ -1,0 +1,19 @@
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    email VARCHAR(255) NOT NULL,
+    password_hash VARBINARY(255) NOT NULL,
+    created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_users_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS teams (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(200) NOT NULL,
+    created_by BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY(id),
+    KEY ix_teams_created_by (created_by),
+    CONSTRAINT fk_teams_created_by FOREIGN KEY (created_by) REFERENCES user(id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4_unicode_ci;
