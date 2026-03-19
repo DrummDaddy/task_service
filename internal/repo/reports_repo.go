@@ -31,12 +31,12 @@ type ReportsRepo struct {
 	db *sql.DB
 }
 
-func NewReportsRepo(db *sql.DB) *ReportsRepo {return &ReportsRepo{db: db}}
+func NewReportsRepo(db *sql.DB) *ReportsRepo { return &ReportsRepo{db: db} }
 
 func (r *ReportsRepo) TeamStats(ctx context.Context, now time.Time) ([]TeamStatsRow, error) {
-	rows, err := r.db.QueryRowContext(ctx, `
-SELECT 
-    t.id AS team.id, 
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT 
+    t.id AS team_id, 
     t.Name AS team_name, 
     COUNT(DISTINCT tm.user_id) AS members_count, 
     COALESCE(SUM(CASE 
@@ -46,8 +46,7 @@ FROM teams t
 LEFT JOIN team_members tm ON tm.team_id = t.id 
 LEFT JOIN tasks tk ON tk.team_id = t.id 
 GROUP BY t.id, t.name 
-ORDER BY t.id DESC 
-`)
+ORDER BY t.id DESC`)
 	_ = now
 	if err != nil {
 		return nil, fmt.Errorf("team stats: %w", err)
@@ -64,8 +63,8 @@ ORDER BY t.id DESC
 	return out, rows.Err()
 }
 
-func (r *ReportsRepo) TopCreatorsLastMonth(ctx context.Context) ([]TopCreatorRow, error{
-rows, err := r.db.QueryContext(ctx,`
+func (r *ReportsRepo) TopCreatorsLastMonth(ctx context.Context) ([]TopCreatorRow, error) {
+	rows, err := r.db.QueryContext(ctx, `
 WITH per_user AS (
     SELECT
         t.team_id,
@@ -88,19 +87,17 @@ WITH per_user AS (
                   WHERE rn <=3 
                   ORDER BY team_id DESC, rn ASC 
     `)
-if err != nil{
-	return nil, fmt.Errorf("top creators: %w", err)
-}
-defer rows.Close()
-var out []TopCreatorRow
-for rows.Next() {
-	var r TopCreatorRow
-	if err := rows.Scan(&r.TeamID, &r.UserID, &r.TaskCreated, &r.Rank); err != nil {
+	if err != nil {
 		return nil, fmt.Errorf("top creators: %w", err)
 	}
-	out = append(out, r)
+	defer rows.Close()
+	var out []TopCreatorRow
+	for rows.Next() {
+		var r TopCreatorRow
+		if err := rows.Scan(&r.TeamID, &r.UserID, &r.TaskCreated, &r.Rank); err != nil {
+			return nil, fmt.Errorf("top creators: %w", err)
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
-return out, rows.Err()
-}
-
-

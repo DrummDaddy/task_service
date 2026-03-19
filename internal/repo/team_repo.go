@@ -111,7 +111,7 @@ func (r *TeamRepo) AddMember(ctx context.Context, teamID uint64, userID uint64, 
 		teamID, userID, role)
 	if err != nil {
 		if isMysqlError(err) {
-			return ErroConflict
+			return ErrConflict
 		}
 		return fmt.Errorf("team_member insert: %w", err)
 
