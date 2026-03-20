@@ -47,7 +47,7 @@ type TaskComment struct {
 }
 
 type TaskFilter struct {
-	TeamID     *uint64
+	TeamID     uint64
 	Status     *TaskStatus
 	AssigneeID *uint64
 	Limit      int
@@ -204,112 +204,112 @@ FOR UPDATE
 		setClauses += clause
 		args = append(args, val)
 	}
- history := make([]TaskHistoryItem, 0, 4)
- addHistory :=  func (field string, oldV, newV *string) {
-	 history = append(history, TaskHistoryItem{
-		 TaskID: taskID,
-		 ChangedBy: changedBy,
-		 FieldName: field,
-		 OldValue: oldV,
-		 NewValue: newV,
-	 })
- }
- if upd.Title != nil && *upd.Title != cur.Title {
-	 oldV := cur.Title
-	 newV := *upd.Title
-	 addSet("title = ?", &newV)
-	 addHistory("title", &oldV, &newV)
- }
- if upd.Description != nil {
-	 var oldV *string = cur.Description
-	 var newV *string = *upd.Description
-	 changed := false
-	 switch {
-	 case oldV != nil && newV != nil:
-		 changed = true
-	 case oldV != nil && newV == nil:
-		 changed = true
-	 case oldV != nil && newV != nil && *oldV != *newV:
-		 changed = true
+	history := make([]TaskHistoryItem, 0, 4)
+	addHistory := func(field string, oldV, newV *string) {
+		history = append(history, TaskHistoryItem{
+			TaskID:    taskID,
+			ChangedBy: changedBy,
+			FieldName: field,
+			OldValue:  oldV,
+			NewValue:  newV,
+		})
+	}
+	if upd.Title != nil && *upd.Title != cur.Title {
+		oldV := cur.Title
+		newV := *upd.Title
+		addSet("title = ?", &newV)
+		addHistory("title", &oldV, &newV)
+	}
+	if upd.Description != nil {
+		var oldV *string = cur.Description
+		var newV *string = *upd.Description
+		changed := false
+		switch {
+		case oldV != nil && newV != nil:
+			changed = true
+		case oldV != nil && newV == nil:
+			changed = true
+		case oldV != nil && newV != nil && *oldV != *newV:
+			changed = true
 
-	 }
-	 if changed {
-		 addSet("description = ?", &newV)
-		 addHistory("description", oldV, newV)
-	 }
- }
- if upd.Status != nil && *upd.Status != cur.Status {
-	 oldS := string(*upd.Status)
-	 newS := string(*upd.Status)
-	 addSet("status = ?", *upd.Status)
-	 addHistory("status", &oldS, &newS)
- }
- if upd.AssigneeID != nil {
-	 var oldV *string
-	 if cur.AssigneeID != nil {
-		 s := fmt.Sprintf("%d", *cur.AssigneeID)
-		 oldV = &s
-	 }
-	 var newV *string
-	 if *upd.AssigneeID !=nil {
-		 s := fmt.Sprintf("%d", **upd.AssigneeID)
-		 newV = &s
-	 }
-	 changed := false
-	 switch  {
-	 case cur.AssigneeID == nil && *upd.AssigneeID != nil:
-		 changed = true
-	 case cur.AssigneeID != nil && *upd.AssigneeID == nil:
-		 changed = true
-	 case cur.AssigneeID != nil && *upd.AssigneeID != nil && *cur.AssigneeID != **upd.AssigneeID:
-		 changed = true
+		}
+		if changed {
+			addSet("description = ?", &newV)
+			addHistory("description", oldV, newV)
+		}
+	}
+	if upd.Status != nil && *upd.Status != cur.Status {
+		oldS := string(*upd.Status)
+		newS := string(*upd.Status)
+		addSet("status = ?", *upd.Status)
+		addHistory("status", &oldS, &newS)
+	}
+	if upd.AssigneeID != nil {
+		var oldV *string
+		if cur.AssigneeID != nil {
+			s := fmt.Sprintf("%d", *cur.AssigneeID)
+			oldV = &s
+		}
+		var newV *string
+		if *upd.AssigneeID != nil {
+			s := fmt.Sprintf("%d", **upd.AssigneeID)
+			newV = &s
+		}
+		changed := false
+		switch {
+		case cur.AssigneeID == nil && *upd.AssigneeID != nil:
+			changed = true
+		case cur.AssigneeID != nil && *upd.AssigneeID == nil:
+			changed = true
+		case cur.AssigneeID != nil && *upd.AssigneeID != nil && *cur.AssigneeID != **upd.AssigneeID:
+			changed = true
 
-	 }
-	 if changed {
-		 addSet("assignee_id = ?", *upd.AssigneeID)
-		 addHistory("assignee_id", oldV, newV)
-	 }
- }
- if setClauses != "" {
-	 args = append(args, "set_clauses = ?", setClauses)
-	 if _, err := tx.ExecContext(ctx, "UPDATE tasks SET"+setClauses+ "WHERE id =?", args...); err != nil {
-		 return Task{}, fmt.Errorf("task update: %w", err)
-	 }
-	 for _, h := range history {
-		 _, err := tx.ExecContext(ctx, `
+		}
+		if changed {
+			addSet("assignee_id = ?", *upd.AssigneeID)
+			addHistory("assignee_id", oldV, newV)
+		}
+	}
+	if setClauses != "" {
+		args = append(args, "set_clauses = ?", setClauses)
+		if _, err := tx.ExecContext(ctx, "UPDATE tasks SET"+setClauses+"WHERE id =?", args...); err != nil {
+			return Task{}, fmt.Errorf("task update: %w", err)
+		}
+		for _, h := range history {
+			_, err := tx.ExecContext(ctx, `
 INSERT INTO task_history(task_id, changed_by, field_name, old_value, new_value) 
 VALUES (?, ?, ?, ?, ?)
 `, h.TaskID, h.ChangedBy, h.FieldName, h.OldValue, h.NewValue)
-		 if err != nil {
-			 return Task{}, fmt.Errorf("task_history insert: %w", err)
-		 }
-	 }
- }
+			if err != nil {
+				return Task{}, fmt.Errorf("task_history insert: %w", err)
+			}
+		}
+	}
 
- var out Task
- var outDesc sql.NullString
- var outAssignee sql.NullInt64
- err = tx.QueryRowContext(ctx, `
+	var out Task
+	var outDesc sql.NullString
+	var outAssignee sql.NullInt64
+	err = tx.QueryRowContext(ctx, `
 SELECT id, team_id, title, description, status, assignee_id, created_by, created_at, updated_at 
 FROM tasks 
 WHERE id = ? 
 `, taskID).Scan(&out.ID, &out.TeamID, &out.Title, &outDesc, &out.Status, &outAssignee, &out.CreatedBy, &out.CreatedAt, &out.UpdatedAt)
- if err != nil {
-	 return Task{}, fmt.Errorf("task selected updated: %w", err)
- }
- if outDesc.Valid {
-	 out.Description = &outDesc.String
- }
- if outAssignee.Valid {
-	 v := uint64(outAssignee.Int64)
-	 out.AssigneeID = &v
- }
+	if err != nil {
+		return Task{}, fmt.Errorf("task selected updated: %w", err)
+	}
+	if outDesc.Valid {
+		out.Description = &outDesc.String
+	}
+	if outAssignee.Valid {
+		v := uint64(outAssignee.Int64)
+		out.AssigneeID = &v
+	}
 
- if err := tx.Commit(); err != nil {
-	 return Task{}, fmt.Errorf("commit tx: %w", err)
+	if err := tx.Commit(); err != nil {
+		return Task{}, fmt.Errorf("commit tx: %w", err)
 
- }
- return out, nil
+	}
+	return out, nil
 
 }
 
@@ -317,7 +317,7 @@ func (r *TaskRepo) History(ctx context.Context, taskID uint64, limit int, offset
 	if limit < 0 || limit > 200 {
 		limit = 50
 	}
-	if  offset < 0 {
+	if offset < 0 {
 		offset = 0
 	}
 
@@ -350,6 +350,20 @@ LIMIT ? OFFSET ?
 	return out, rows.Err()
 }
 
+func (r *TaskRepo) AddComment(ctx context.Context, taskID, userID uint64, body string) (uint64, error) {
+	res, err := r.db.ExecContext(ctx, `
+INSERT INTO task_comment(task_id, user_id, body) VALUES (?, ?, ?)`, taskID, userID, body)
+	if err != nil {
+		return 0, fmt.Errorf("add comment: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("add comment: %w", err)
+
+	}
+	return uint64(id), nil
+}
+
 func (r *TaskRepo) ListComments(ctx context.Context, taskID uint64, limit int, offset int) ([]TaskComment, error) {
 	if limit < 0 || limit > 200 {
 		limit = 50
@@ -371,7 +385,7 @@ LIMIT ? OFFSET ?
 	var out []TaskComment
 	for rows.Next() {
 		var c TaskComment
-		if rows.Scan(&c.ID, &c.TaskID, &c.UserID, &c.Body, &c.CreatedAt); err != nil{
+		if rows.Scan(&c.ID, &c.TaskID, &c.UserID, &c.Body, &c.CreatedAt); err != nil {
 			return nil, fmt.Errorf("task_comments scan: %w", err)
 		}
 
