@@ -13,7 +13,7 @@ var ErrConflict = errors.New("conflict")
 type User struct {
 	ID           uint64
 	Email        string
-	PasswordHash string
+	PasswordHash []byte
 }
 
 type UserRepo struct {

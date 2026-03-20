@@ -371,7 +371,7 @@ LIMIT ? OFFSET ?
 	var out []TaskComment
 	for rows.Next() {
 		var c TaskComment
-		for rows.Scan(&c.ID, &c.TaskID, &c.UserID, &c.Body, &c.CreatedAt); err != nil {
+		if rows.Scan(&c.ID, &c.TaskID, &c.UserID, &c.Body, &c.CreatedAt); err != nil{
 			return nil, fmt.Errorf("task_comments scan: %w", err)
 		}
 
