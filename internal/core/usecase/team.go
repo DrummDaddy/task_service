@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/DrummDaddy/task_service/internal/core/ports"
+	"github.com/DrummDaddy/task_service/internal/email"
 	"github.com/DrummDaddy/task_service/internal/models"
 	"github.com/DrummDaddy/task_service/internal/repo"
-	"github.com/DrummDaddy/task_service/internal/email"
 )
 
 type TeamUseCase struct {
@@ -20,7 +20,7 @@ func NewTeamUsecase(teams ports.TeamRepository, email ports.EmailSender) *TeamUs
 }
 
 func (uc *TeamUseCase) CreateTeam(ctx context.Context, userID uint64, name string) (uint64, error) {
-	name := strings.TrimSpace(name)
+	name = strings.TrimSpace(name)
 	if name == "" {
 		return 0, repo.ErrConflict
 	}
@@ -33,7 +33,7 @@ func (uc *TeamUseCase) ListTeams(ctx context.Context, userID uint64) ([]models.T
 }
 
 func (uc *TeamUseCase) Invite(ctx context.Context, actorID, teamID, invitedUserID uint64, role models.TeamMemberRole) (bool, error) {
-	r, err := uc.teams.GetUserRole(ctx, actorID, teamID)
+	r, err := uc.teams.GetUserRole(ctx, teamID, actorID)
 	if err != nil {
 		return false, repo.ErrNotFound
 	}

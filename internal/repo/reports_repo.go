@@ -17,17 +17,17 @@ func NewReportsRepo(db *sql.DB) *ReportsRepo { return &ReportsRepo{db: db} }
 
 func (r *ReportsRepo) TeamStats(ctx context.Context, now time.Time) ([]models.TeamStatsRow, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT 
-    t.id AS team_id, 
-    t.Name AS team_name, 
-    COUNT(DISTINCT tm.user_id) AS members_count, 
-    COALESCE(SUM(CASE 
+		`SELECT
+  t.id AS team_id,
+  t.name AS team_name,
+  COUNT(DISTINCT tm.user_id) AS members_count,
+  COALESCE(SUM(CASE
     WHEN tk.status = 'done' AND tk.updated_at >= (UTC_TIMESTAMP(3) - INTERVAL 7 DAY)
-             THEN 1 ELSE 0 END), 0) AS done_tasks_last_7d 
-FROM teams t 
-LEFT JOIN team_members tm ON tm.team_id = t.id 
-LEFT JOIN tasks tk ON tk.team_id = t.id 
-GROUP BY t.id, t.name 
+    THEN 1 ELSE 0 END), 0) AS done_tasks_last_7d
+FROM teams t
+LEFT JOIN team_members tm ON tm.team_id = t.id
+LEFT JOIN tasks tk ON tk.team_id = t.id
+GROUP BY t.id, t.name
 ORDER BY t.id DESC`)
 	_ = now
 	if err != nil {
@@ -48,26 +48,26 @@ ORDER BY t.id DESC`)
 func (r *ReportsRepo) TopCreatorsLastMonth(ctx context.Context) ([]models.TopCreatorRow, error) {
 	rows, err := r.db.QueryContext(ctx, `
 WITH per_user AS (
-    SELECT
-        t.team_id,
-        t.created_by AS user_id, 
-        COUNT(*) AS task_created 
-    FROM tasks t
-    WHERE t.created_at >= (UTC_TIMESTAMP(3) - INTERVAL 1 MONTH) 
-    GROUP BY t.team_id, t.created_by
-), 
-    ranked AS(
-        SELECT 
-            team_id,
-            user_id,
-            task_created,
-        ROW_NUMBER() OVER (PARTITION BY team_id ORDER BY tasks_created DESC) AS rn 
-        FROM per_user
-    ) 
-                  SELECT team_id, user_id, task_created, rn 
-                  FROM ranked 
-                  WHERE rn <=3 
-                  ORDER BY team_id DESC, rn ASC 
+  SELECT
+    t.team_id,
+    t.created_by AS user_id,
+    COUNT(*) AS tasks_created
+  FROM tasks t
+  WHERE t.created_at >= (UTC_TIMESTAMP(3) - INTERVAL 1 MONTH)
+  GROUP BY t.team_id, t.created_by
+),
+ranked AS (
+  SELECT
+    team_id,
+    user_id,
+    tasks_created,
+    ROW_NUMBER() OVER (PARTITION BY team_id ORDER BY tasks_created DESC, user_id ASC) AS rn
+  FROM per_user
+)
+SELECT team_id, user_id, tasks_created, rn
+FROM ranked
+WHERE rn <= 3
+ORDER BY team_id DESC, rn ASC
     `)
 	if err != nil {
 		return nil, fmt.Errorf("top creators: %w", err)
@@ -82,4 +82,8 @@ WITH per_user AS (
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+func (r *ReportsRepo) TaskWithInvalidAssignee(ctx context.Context, limit, offset int) {
+
 }

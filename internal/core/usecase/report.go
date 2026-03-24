@@ -19,10 +19,10 @@ func NewReportUsecase(reports ports.ReportsRepository) *ReportUsecase {
 func (uc *ReportUsecase) TeamStats(ctx context.Context, now time.Time) ([]models.TeamStatsRow, error) {
 	return uc.reports.TeamStats(ctx, now)
 }
-func (uc *ReportUsecase) TopCreatorsLastMounth(ctx context.Context) ([]models.TopCreatorRow, error) {
+func (uc *ReportUsecase) TopCreatorsLastMonth(ctx context.Context) ([]models.TopCreatorRow, error) {
 	return uc.reports.TopCreatorsLastMonth(ctx)
 }
 
-func (uc *ReportUsecase) TaslWithInvalidAssignee(ctx context.Context, limit, offset int) ([]models.IntegrityTaskRow, error) {
+func (uc *ReportUsecase) TaskWithInvalidAssignee(ctx context.Context, limit, offset int) ([]models.IntegrityTaskRow, error) {
 	return uc.reports.TaskWithInvalidAssignee(ctx, limit, offset)
 }

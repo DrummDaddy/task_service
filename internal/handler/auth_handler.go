@@ -4,20 +4,17 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/DrummDaddy/task_service/internal/auth"
-	"github.com/DrummDaddy/task_service/internal/config"
+	"github.com/DrummDaddy/task_service/internal/core/usecase"
 	"github.com/DrummDaddy/task_service/internal/httpx"
 	"github.com/DrummDaddy/task_service/internal/repo"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
-	cfg      config.Config
-	userRepo *repo.UserRepo
+	uc *usecase.AuthUsecase
 }
 
-func NewAuthHandler(cfg config.Config, userRepo *repo.UserRepo) *AuthHandler {
-	return &AuthHandler{cfg: cfg, userRepo: userRepo}
+func NewAuthHandler(uc *usecase.AuthUsecase) *AuthHandler {
+	return &AuthHandler{uc: uc}
 }
 
 type registerRequest struct {
@@ -31,19 +28,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "invalid json format")
 		return
 	}
-	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
-	if req.Email == "" || len(req.Password) < 8 {
-		httpx.Error(w, http.StatusBadRequest, "email or password is too short, min 8 chars")
-		return
-	}
 
-	passBytes := []byte(req.Password + h.cfg.Auth.PasswordPepper)
-	hash, err := bcrypt.GenerateFromPassword(passBytes, h.cfg.Auth.PasswordHashCost)
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "failed to hash password")
-		return
-	}
-	id, err := h.userRepo.Create(r.Context(), req.Email, hash)
+	id, err := h.uc.Register(r.Context(), req.Email, req.Password)
 	if err != nil {
 		if err == repo.ErrConflict {
 			httpx.Error(w, http.StatusConflict, "user already exists")
@@ -72,16 +58,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.userRepo.GetByEmail(r.Context(), req.Email)
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "failed to get user")
-		return
-	}
-	if err := bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(req.Password+h.cfg.Auth.PasswordPepper)); err != nil {
-		httpx.Error(w, http.StatusUnauthorized, "invalid password")
-		return
-	}
-	token, err := auth.IssueAccessToken([]byte(h.cfg.Auth.JWTSecret), u.ID, h.cfg.Auth.AccessTokenTTL)
+	token, err := h.uc.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		httpx.Error(w, http.StatusUnauthorized, "invalid token")
 		return

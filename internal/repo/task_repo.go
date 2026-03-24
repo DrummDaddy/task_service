@@ -59,19 +59,17 @@ func (r *TaskRepo) Get(ctx context.Context, id uint64) (models.Task, error) {
 	return t, nil
 
 }
-func (r *TaskRepo) List(ctx context.Context, f *models.TaskFilter) ([]models.Task, error) {
+func (r *TaskRepo) List(ctx context.Context, f models.TaskFilter) ([]models.Task, error) {
 	if f.Limit <= 0 || f.Limit > 100 {
 		f.Limit = 20
 	}
 	if f.Offset < 0 {
 		f.Offset = 0
 	}
-
 	query := `
-SELECT id, team_id, title, description, status, assignee_id, created_by, created_at, updated_at 
+SELECT id, team_id, title, description, status, assignee_id, created_by, created_at, updated_at
 FROM tasks
-WHERE status = ?
-`
+WHERE team_id = ?`
 	args := []any{f.TeamID}
 	if f.Status != nil {
 		query += " AND status = ?"
@@ -81,7 +79,7 @@ WHERE status = ?
 		query += " AND assignee_id = ?"
 		args = append(args, *f.AssigneeID)
 	}
-	query += "ORDER BY id DESC LIMIT ? OFFSET ?"
+	query += " ORDER BY id DESC LIMIT ? OFFSET ?"
 	args = append(args, f.Limit, f.Offset)
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
@@ -106,7 +104,6 @@ WHERE status = ?
 			t.AssigneeID = &v
 		}
 		out = append(out, t)
-
 	}
 	return out, rows.Err()
 }

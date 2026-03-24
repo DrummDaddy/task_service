@@ -29,7 +29,7 @@ func TestAuthHandler_Register(t *testing.T) {
 	cfg.Auth.JWTSecret = "secret"
 	cfg.Auth.PasswordHashCost = 4
 
-	h := NewAuthHandler(cfg, repo.NewUserRepo(db))
+	h := NewAuthHandler(cfg, uc)
 
 	body, _ := json.Marshal(map[string]any{"email": "u@example.com", "password": "password123"})
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/register", bytes.NewReader(body))

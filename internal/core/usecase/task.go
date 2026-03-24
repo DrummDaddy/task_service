@@ -29,7 +29,7 @@ type CreateTaskInput struct {
 	AssigneeID  *uint64
 }
 
-func (uc *TaskUsecase) Create(ctx context.Context, in *CreateTaskInput) (uint64, error) {
+func (uc *TaskUsecase) Create(ctx context.Context, in CreateTaskInput) (uint64, error) {
 	title := strings.TrimSpace(in.Title)
 	if in.TeamID == 0 || title == "" {
 		return 0, repo.ErrConflict
@@ -56,6 +56,7 @@ func (uc *TaskUsecase) Create(ctx context.Context, in *CreateTaskInput) (uint64,
 			return 0, repo.ErrConflict
 		}
 	}
+
 	id, err := uc.tasks.Create(ctx, models.Task{
 		TeamID:      in.TeamID,
 		Title:       title,
@@ -66,7 +67,6 @@ func (uc *TaskUsecase) Create(ctx context.Context, in *CreateTaskInput) (uint64,
 	})
 	if err != nil {
 		return 0, err
-
 	}
 	if uc.cache != nil {
 		_ = uc.cache.BumpTeamVersion(ctx, in.TeamID)
@@ -94,6 +94,7 @@ func (uc *TaskUsecase) List(ctx context.Context, in ListTaskInput) ([]models.Tas
 	if !isMember {
 		return nil, repo.ErrConflict
 	}
+
 	filter := models.TaskFilter{
 		TeamID:     in.TeamID,
 		Status:     in.Status,
@@ -101,22 +102,22 @@ func (uc *TaskUsecase) List(ctx context.Context, in ListTaskInput) ([]models.Tas
 		Limit:      in.Limit,
 		Offset:     in.Offset,
 	}
+
 	if uc.cache != nil {
-		if ver, err := uc.cache.GetTeamVersion(ctx, in.TeamID); err != nil {
+		if ver, err := uc.cache.GetTeamVersion(ctx, in.TeamID); err == nil {
 			key := uc.cache.ListKey(in.TeamID, ver, filter)
-			if teams, ok, err := uc.cache.GetTasks(ctx, key); err == nil && ok {
-				return teams, nil
+			if items, ok, err := uc.cache.GetTasks(ctx, key); err == nil && ok {
+				return items, nil
 			}
-
 		}
-
 	}
-	items, er := uc.tasks.List(ctx, filter)
-	if er != nil {
-		return nil, er
+
+	items, err := uc.tasks.List(ctx, filter)
+	if err != nil {
+		return nil, err
 	}
 	if uc.cache != nil {
-		if ver, err := uc.cache.GetTeamVersion(ctx, in.TeamID); err != nil {
+		if ver, err := uc.cache.GetTeamVersion(ctx, in.TeamID); err == nil {
 			_ = uc.cache.SetTasks(ctx, uc.cache.ListKey(in.TeamID, ver, filter), items)
 		}
 	}
@@ -141,9 +142,10 @@ func (uc *TaskUsecase) Update(ctx context.Context, in UpdateTaskInput) (models.T
 	if err != nil {
 		return models.Task{}, repo.ErrNotFound
 	}
-	canEdit := role == models.RoleOwner || role == models.RoleAdmin || cur.CreatedBy == in.UserID ||
+	canEdit := role == models.RoleOwner || role == models.RoleAdmin ||
+		cur.CreatedBy == in.UserID ||
 		(cur.AssigneeID != nil && *cur.AssigneeID == in.UserID)
-	if canEdit {
+	if !canEdit {
 		return models.Task{}, repo.ErrConflict
 	}
 	if in.Status != nil {
@@ -160,6 +162,7 @@ func (uc *TaskUsecase) Update(ctx context.Context, in UpdateTaskInput) (models.T
 			return models.Task{}, repo.ErrConflict
 		}
 	}
+
 	updated, err := uc.tasks.UpdateWithHistory(ctx, in.TaskID, repo.TaskUpdate{
 		Title:       in.Title,
 		Description: in.Description,
@@ -190,7 +193,7 @@ func (uc *TaskUsecase) History(ctx context.Context, userID, taskID uint64, limit
 	return uc.tasks.History(ctx, taskID, limit, offset)
 }
 
-func (uc *TaskUsecase) AdddComment(ctx context.Context, userID, taskID uint64, body string) (uint64, error) {
+func (uc *TaskUsecase) AddComment(ctx context.Context, userID, taskID uint64, body string) (uint64, error) {
 	body = strings.TrimSpace(body)
 	if body == "" {
 		return 0, repo.ErrConflict
@@ -217,7 +220,6 @@ func (uc *TaskUsecase) ListComments(ctx context.Context, userID, taskID uint64, 
 	isMember, err := uc.teams.IsMember(ctx, cur.TeamID, userID)
 	if err != nil {
 		return nil, err
-
 	}
 	if !isMember {
 		return nil, repo.ErrConflict
@@ -226,6 +228,6 @@ func (uc *TaskUsecase) ListComments(ctx context.Context, userID, taskID uint64, 
 }
 
 func ParseUintParam(s string) (uint64, error) {
-	v, err := strconv.ParseUint(s, 10, 64)
+	v, err := strconv.ParseUint(strings.TrimSpace(s), 10, 64)
 	return v, err
 }

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/DrummDaddy/task_service/internal/repo"
+	"github.com/DrummDaddy/task_service/internal/models"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -41,7 +41,7 @@ func (c *TaskCache) BumpTeamVersion(ctx context.Context, teamID uint64) error {
 	return c.rdb.Set(ctx, c.teamVerKey(teamID), "1", 0).Err()
 }
 
-func (c *TaskCache) ListKey(teamID uint64, ver string, f repo.TaskFilter) string {
+func (c *TaskCache) ListKey(teamID uint64, ver string, f models.TaskFilter) string {
 	status := ""
 	if f.Status != nil {
 		status = string(*f.Status)
@@ -53,7 +53,7 @@ func (c *TaskCache) ListKey(teamID uint64, ver string, f repo.TaskFilter) string
 	return fmt.Sprintf("%d:%s:%s:%s", teamID, ver, status, assignee)
 }
 
-func (c *TaskCache) GetTasks(ctx context.Context, key string) ([]repo.Task, bool, error) {
+func (c *TaskCache) GetTasks(ctx context.Context, key string) ([]models.Task, bool, error) {
 	raw, err := c.rdb.Get(ctx, key).Bytes()
 	if err == redis.Nil {
 		return nil, false, nil
@@ -62,14 +62,14 @@ func (c *TaskCache) GetTasks(ctx context.Context, key string) ([]repo.Task, bool
 		return nil, false, err
 
 	}
-	var items []repo.Task
+	var items []models.Task
 	if err := json.Unmarshal(raw, &items); err != nil {
 		return nil, false, err
 	}
 	return items, true, nil
 }
 
-func (c *TaskCache) SetTasks(ctx context.Context, key string, items []repo.Task) error {
+func (c *TaskCache) SetTasks(ctx context.Context, key string, items []models.Task) error {
 	raw, err := json.Marshal(items)
 	if err != nil {
 		return err

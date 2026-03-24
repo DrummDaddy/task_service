@@ -5,42 +5,42 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/DrummDaddy/task_service/internal/core/usecase"
 	"github.com/DrummDaddy/task_service/internal/httpx"
-	"github.com/DrummDaddy/task_service/internal/repo"
 )
 
 type ReportHandler struct {
-	reports *repo.ReportsRepo
+	uc *usecase.ReportUsecase
 }
 
-func NewReportHandler(reports *repo.ReportsRepo) *ReportHandler {
-	return &ReportHandler{reports: reports}
+func NewReportHandler(uc *usecase.ReportUsecase) *ReportHandler {
+	return &ReportHandler{uc: uc}
 }
 
 func (h *ReportHandler) TeamStats(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.reports.TeamStats(r.Context(), time.Now())
+	rows, err := h.uc.TeamStats(r.Context(), time.Now())
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "could not get team stats")
+		httpx.Error(w, http.StatusInternalServerError, "report failed")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": rows})
 }
 
 func (h *ReportHandler) TopCreators(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.reports.TopCreatorsLastMonth(r.Context())
+	rows, err := h.uc.TopCreatorsLastMonth(r.Context())
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "could not get top creators")
+		httpx.Error(w, http.StatusInternalServerError, "report failed")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": rows})
 }
 
-func (h *ReportHandler) IntegrityInvalidAssigness(w http.ResponseWriter, r *http.Request) {
+func (h *ReportHandler) IntegrityInvalidAssignees(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-	rows, err := h.reports.TaskWithInvalidAssignee(r.Context(), limit, offset)
+	rows, err := h.uc.TaskWithInvalidAssignee(r.Context(), limit, offset)
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "could not get task with invalid assignees")
+		httpx.Error(w, http.StatusInternalServerError, "report failed")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": rows})

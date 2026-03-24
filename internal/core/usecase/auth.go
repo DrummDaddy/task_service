@@ -38,17 +38,17 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password string) (uin
 	return u.users.Create(ctx, email, hash)
 }
 
-func (u *AuthUsecase) Login(ctx context.Context, email, password string) (uint64, error) {
+func (u *AuthUsecase) Login(ctx context.Context, email, password string) (string, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	if email == "" || password == "" {
-		return 0, fmt.Errorf("email or password is too short")
+		return "", repo.ErrNotFound
 	}
 	usr, err := u.users.GetByEmail(ctx, email)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(usr.PasswordHash), []byte(password+u.cfg.PasswordPepper)); err != nil {
-		return 0, repo.ErrNotFound
+	if err := bcrypt.CompareHashAndPassword(usr.PasswordHash, []byte(password+u.cfg.PasswordPepper)); err != nil {
+		return "", repo.ErrNotFound
 	}
-	return usr.ID, nil
+	return u.tokenIssue.Issue(usr.ID)
 }
