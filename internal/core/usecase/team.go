@@ -54,7 +54,11 @@ func (uc *TeamUseCase) Invite(ctx context.Context, actorID, teamID, invitedUserI
 	}
 	emailSent := true
 	if uc.email != nil {
-		if err := uc.email.SendInvite(ctx, email.InvitePayload{TeamID: teamID, UserID: invitedUserID, Inviteby: actorID}); err != nil {
+		if err := uc.email.SendInvite(ctx, ports.InvitePayload{
+			TeamID:   teamID,
+			UserID:   invitedUserID,
+			InviteBy: actorID,
+		}); err != nil {
 			emailSent = false
 		}
 	}

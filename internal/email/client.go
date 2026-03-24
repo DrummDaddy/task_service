@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/DrummDaddy/task_service/internal/core/ports"
 	"github.com/sony/gobreaker"
 )
 
@@ -15,12 +16,6 @@ type Client struct {
 	baseURL string
 	http    *http.Client
 	cb      *gobreaker.CircuitBreaker
-}
-
-type InvitePayload struct {
-	TeamID   uint64 `json:"team_id"`
-	UserID   uint64 `json:"user_id"`
-	InviteBy uint64 `json:"invite_by"`
 }
 
 func NewClient(baseURL string, timeout time.Duration) *Client {
@@ -43,9 +38,12 @@ func NewClient(baseURL string, timeout time.Duration) *Client {
 	}
 }
 
-func (c *Client) SendInvite(ctx context.Context, p InvitePayload) error {
+func (c *Client) SendInvite(ctx context.Context, p ports.InvitePayload) error {
 	_, err := c.cb.Execute(func() (any, error) {
 		body, err := json.Marshal(p)
+		if err != nil {
+			return nil, err
+		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/send", bytes.NewBuffer(body))
 		if err != nil {
 			return nil, err
