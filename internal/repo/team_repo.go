@@ -5,20 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-)
 
-type Team struct {
-	ID        uint64 `json:"id"`
-	Name      string `json:"name"`
-	CreatedBy uint64 `json:"created_by"`
-}
-
-type TeamMemberRole string
-
-const (
-	RoleOwner  TeamMemberRole = "owner"
-	RoleAdmin  TeamMemberRole = "admin"
-	RoleMember TeamMemberRole = "member"
+	"github.com/DrummDaddy/task_service/internal/models"
 )
 
 type TeamRepo struct {
@@ -55,7 +43,7 @@ func (r *TeamRepo) CreateTeamOwner(ctx context.Context, name string, createdBy u
 	return teamID, nil
 }
 
-func (r *TeamRepo) ListTeamsByUser(ctx context.Context, userID uint64) ([]Team, error) {
+func (r *TeamRepo) ListTeamsByUser(ctx context.Context, userID uint64) ([]models.Team, error) {
 	rows, err := r.db.QueryContext(ctx, `
 SELECT t.id, t.name, t.created_by
 FROM teams t
@@ -66,9 +54,9 @@ ORDER BY t.id DESC `, userID)
 		return nil, fmt.Errorf("teams list: %w", err)
 	}
 	defer rows.Close()
-	var out []Team
+	var out []models.Team
 	for rows.Next() {
-		var t Team
+		var t models.Team
 		if err := rows.Scan(&t.ID, &t.Name, &t.CreatedBy); err != nil {
 			return nil, fmt.Errorf("teams scan: %w", err)
 		}
@@ -77,8 +65,8 @@ ORDER BY t.id DESC `, userID)
 	return out, rows.Err()
 }
 
-func (r *TeamRepo) GetUserRole(ctx context.Context, teamID uint64, userID uint64) (TeamMemberRole, error) {
-	var role TeamMemberRole
+func (r *TeamRepo) GetUserRole(ctx context.Context, teamID uint64, userID uint64) (models.TeamMemberRole, error) {
+	var role models.TeamMemberRole
 	err := r.db.QueryRowContext(ctx,
 		`SELECT role FROM team_members WHERE team_id = ? AND user_id = ?`,
 		teamID, userID).Scan(&role)
@@ -105,7 +93,7 @@ func (r *TeamRepo) IsMember(ctx context.Context, teamID uint64, userID uint64) (
 	return true, nil
 }
 
-func (r *TeamRepo) AddMember(ctx context.Context, teamID uint64, userID uint64, role TeamMemberRole) error {
+func (r *TeamRepo) AddMember(ctx context.Context, teamID uint64, userID uint64, role models.TeamMemberRole) error {
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO team_members(team_id, user_id, role) VALUES (?, ?, ?)`,
 		teamID, userID, role)

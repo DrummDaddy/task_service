@@ -5,16 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/DrummDaddy/task_service/internal/models"
 )
 
 var ErrNotFound = errors.New("not found")
 var ErrConflict = errors.New("conflict")
-
-type User struct {
-	ID           uint64
-	Email        string
-	PasswordHash []byte
-}
 
 type UserRepo struct {
 	db *sql.DB
@@ -38,16 +34,16 @@ func (r *UserRepo) Create(ctx context.Context, email string, passwordHash []byte
 	return uint64(id), nil
 }
 
-func (r *UserRepo) GetByEmail(ctx context.Context, email string) (User, error) {
-	var u User
+func (r *UserRepo) GetByEmail(ctx context.Context, email string) (models.User, error) {
+	var u models.User
 	err := r.db.QueryRowContext(ctx, `
 SELECT id, email, password_hash
 FROM users WHERE email = ?`, email).Scan(&u.ID, &u.Email, &u.PasswordHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return User{}, ErrNotFound
+			return models.User{}, ErrNotFound
 		}
-		return User{}, fmt.Errorf("users get: %w", err)
+		return models.User{}, fmt.Errorf("users get: %w", err)
 	}
 	return u, nil
 }

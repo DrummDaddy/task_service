@@ -5,27 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/DrummDaddy/task_service/internal/models"
 )
-
-type TeamStatsRow struct {
-	TeamID         uint64 `json:"team_id"`
-	TeamName       string `json:"team_name"`
-	MembersCount   int    `json:"members_count"`
-	DoneTaskLast7d int    `json:"done_task_last7d"`
-}
-
-type TopCreatorRow struct {
-	TeamID      uint64 `json:"team_id"`
-	UserID      uint64 `json:"user_id"`
-	TaskCreated int    `json:"task_created"`
-	Rank        int    `json:"rank"`
-}
-
-type IntegrityTaskRow struct {
-	TaskID     uint64 `json:"task_id"`
-	TeamID     uint64 `json:"team_id"`
-	AssigneeID uint64 `json:"assignee_id"`
-}
 
 type ReportsRepo struct {
 	db *sql.DB
@@ -33,7 +15,7 @@ type ReportsRepo struct {
 
 func NewReportsRepo(db *sql.DB) *ReportsRepo { return &ReportsRepo{db: db} }
 
-func (r *ReportsRepo) TeamStats(ctx context.Context, now time.Time) ([]TeamStatsRow, error) {
+func (r *ReportsRepo) TeamStats(ctx context.Context, now time.Time) ([]models.TeamStatsRow, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT 
     t.id AS team_id, 
@@ -52,9 +34,9 @@ ORDER BY t.id DESC`)
 		return nil, fmt.Errorf("team stats: %w", err)
 	}
 	defer rows.Close()
-	var out []TeamStatsRow
+	var out []models.TeamStatsRow
 	for rows.Next() {
-		var r TeamStatsRow
+		var r models.TeamStatsRow
 		if err := rows.Scan(&r.TeamID, &r.TeamName, &r.MembersCount, &r.DoneTaskLast7d); err != nil {
 			return nil, fmt.Errorf("team stats: %w", err)
 		}
@@ -63,7 +45,7 @@ ORDER BY t.id DESC`)
 	return out, rows.Err()
 }
 
-func (r *ReportsRepo) TopCreatorsLastMonth(ctx context.Context) ([]TopCreatorRow, error) {
+func (r *ReportsRepo) TopCreatorsLastMonth(ctx context.Context) ([]models.TopCreatorRow, error) {
 	rows, err := r.db.QueryContext(ctx, `
 WITH per_user AS (
     SELECT
@@ -91,9 +73,9 @@ WITH per_user AS (
 		return nil, fmt.Errorf("top creators: %w", err)
 	}
 	defer rows.Close()
-	var out []TopCreatorRow
+	var out []models.TopCreatorRow
 	for rows.Next() {
-		var r TopCreatorRow
+		var r models.TopCreatorRow
 		if err := rows.Scan(&r.TeamID, &r.UserID, &r.TaskCreated, &r.Rank); err != nil {
 			return nil, fmt.Errorf("top creators: %w", err)
 		}
