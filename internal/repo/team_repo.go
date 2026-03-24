@@ -15,7 +15,7 @@ type TeamRepo struct {
 
 func NewTeamRepo(db *sql.DB) *TeamRepo { return &TeamRepo{db: db} }
 
-func (r *TeamRepo) CreateTeamOwner(ctx context.Context, name string, createdBy uint64) (uint64, error) {
+func (r *TeamRepo) CreateTeamWithOwner(ctx context.Context, name string, createdBy uint64) (uint64, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("tx begin: %w", err)

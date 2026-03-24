@@ -84,6 +84,33 @@ ORDER BY team_id DESC, rn ASC
 	return out, rows.Err()
 }
 
-func (r *ReportsRepo) TaskWithInvalidAssignee(ctx context.Context, limit, offset int) {
-
+func (r *ReportsRepo) TaskWithInvalidAssignee(ctx context.Context, limit, offset int) ([]models.IntegrityTaskRow, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	if offset <= 0 {
+		offset = 0
+	}
+	rows, err := r.db.QueryContext(ctx, `
+SELECT tk.id, tk.team_id, tk.assignee_id
+FROM tasks tk
+LEFT JOIN team_members tm
+  ON tm.team_id = tk.team_id AND tm.user_id = tk.assignee_id
+WHERE tk.assignee_id IS NOT NULL
+  AND tm.user_id IS NULL
+ORDER BY tk.id DESC
+LIMIT ? OFFSET ?`, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("tasks: %w", err)
+	}
+	defer rows.Close()
+	var out []models.IntegrityTaskRow
+	for rows.Next() {
+		var rec models.IntegrityTaskRow
+		if err := rows.Scan(&rec.TaskID, &rec.TeamID, &rec.AssigneeID); err != nil {
+			return nil, fmt.Errorf("tasks: %w", err)
+		}
+		out = append(out, rec)
+	}
+	return out, rows.Err()
 }
