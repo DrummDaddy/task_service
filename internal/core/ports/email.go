@@ -11,5 +11,5 @@ type InvitePayload struct {
 }
 
 type EmailSender interface {
-	SendInvite(ctx context.Context, p InvitePayload)
+	SendInvite(ctx context.Context, p InvitePayload) error
 }

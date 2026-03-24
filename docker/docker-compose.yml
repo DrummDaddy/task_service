@@ -1,0 +1,59 @@
+version: "3.9"
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: task_mysql
+    environment:
+      MYSQL_DATABASE: task_service
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -prootpass || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: task_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: task_service_app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      TASK_HTTP_ADDR: ":8080"
+      TASK_MYSQL_DSN: "root:rootpass@tcp(mysql:3306)/task_service?parseTime=true&multiStatements=true"
+      TASK_REDIS_ADDR: "redis:6379"
+      TASK_REDIS_DB: "0"
+      TASK_AUTH_JWT_SECRET: "dev-secret"
+      TASK_AUTH_ACCESS_TOKEN_TTL: "24h"
+      TASK_AUTH_PASSWORD_PEPPER: ""
+      TASK_AUTH_PASSWORD_HASH_COST: "12"
+      TASK_CACHE_TASKS_TTL: "5m"
+      TASK_RATE_LIMIT_PER_USER_PER_MINUTE: "100"
+      TASK_EMAIL_BASE_URL: "http://email-service:8081"
+      TASK_EMAIL_TIMEOUT: "2s"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  mysql_data:

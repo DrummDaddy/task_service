@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -42,13 +44,36 @@ type Config struct {
 
 func Load() (Config, error) {
 	v := viper.New()
+
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
 	v.AddConfigPath(".")
 	v.AddConfigPath("./configs")
 
 	v.SetEnvPrefix("TASK")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
+
+	// 🔥 КРИТИЧЕСКИ ВАЖНО: Явно связываем env vars с путями конфигурации
+	v.BindEnv("http.addr", "TASK_HTTP_ADDR")
+	v.BindEnv("mysql.dsn", "TASK_MYSQL_DSN")
+	v.BindEnv("mysql.max_open_conns", "TASK_MYSQL_MAX_OPEN_CONNS")
+	v.BindEnv("mysql.max_idle_conns", "TASK_MYSQL_MAX_IDLE_CONNS")
+	v.BindEnv("mysql.conn_max_lifetime", "TASK_MYSQL_CONN_MAX_LIFETIME")
+	v.BindEnv("redis.addr", "TASK_REDIS_ADDR")
+	v.BindEnv("redis.db", "TASK_REDIS_DB")
+	v.BindEnv("auth.jwt_secret", "TASK_AUTH_JWTSECRET")
+	v.BindEnv("auth.access_token_ttl", "TASK_AUTH_ACCESS_TOKEN_TTL")
+	v.BindEnv("auth.password_pepper", "TASK_AUTH_PASSWORD_PEPPER")
+	v.BindEnv("auth.password_hash_cost", "TASK_AUTH_PASSWORD_HASH_COST")
+	v.BindEnv("cache.tasks_ttl", "TASK_CACHE_TASKS_TTL")
+	v.BindEnv("rate_limit.per_user_per_minute", "TASK_RATE_LIMIT_PER_USER_PER_MINUTE")
+	v.BindEnv("email.base_url", "TASK_EMAIL_BASE_URL")
+	v.BindEnv("email.timeout", "TASK_EMAIL_TIMEOUT")
+
+	// 🔍 Отладка
+	fmt.Println("ENV TASK_AUTH_JWTSECRET:", os.Getenv("TASK_AUTH_JWTSECRET"))
+	fmt.Println("Viper value [auth.jwt_secret]:", v.GetString("auth.jwt_secret"))
 
 	setDefault(v)
 	_ = v.ReadInConfig()
@@ -57,9 +82,14 @@ func Load() (Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return Config{}, fmt.Errorf("config unmarshal: %w", err)
 	}
+
+	// 🔍 Отладка после unmarshal
+	fmt.Println("After Unmarshal - cfg.Auth.JWTSecret:", cfg.Auth.JWTSecret)
+
 	if cfg.Auth.JWTSecret == "" {
 		return Config{}, fmt.Errorf("jwt secret required")
 	}
+
 	return cfg, nil
 }
 
@@ -68,7 +98,7 @@ func setDefault(v *viper.Viper) {
 	v.SetDefault("http.addr", ":8080")
 	v.SetDefault("mysql.max_open_conns", 25)
 	v.SetDefault("mysql.max_idle_conns", 25)
-	v.SetDefault("mysql.conn_max_lifetime", 5*time.Second)
+	v.SetDefault("mysql.conn_max_lifetime", 5*time.Minute)
 	v.SetDefault("redis.addr", ":6379")
 	v.SetDefault("redis.db", 0)
 	v.SetDefault("auth.access_token_ttl", "24h")

@@ -4,17 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DrummDaddy/task_service/internal/repo"
+	"github.com/DrummDaddy/task_service/internal/models"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTasksCache(t *testing.T) {
 	c := NewTaskCache(nil, 5*time.Minute)
-	status := repo.StatusDone
+	status := models.StatusDone
 	teamID := uint64(1)
 	assignee := uint64(5)
-	key := c.ListKey(1, "7", repo.TaskFilter{
-		TeamID:     &teamID,
+	key := c.ListKey(1, "7", models.TaskFilter{
+		TeamID:     teamID,
 		Status:     &status,
 		AssigneeID: &assignee,
 		Limit:      20,

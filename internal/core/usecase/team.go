@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/DrummDaddy/task_service/internal/core/ports"
-	"github.com/DrummDaddy/task_service/internal/email"
 	"github.com/DrummDaddy/task_service/internal/models"
 	"github.com/DrummDaddy/task_service/internal/repo"
 )
