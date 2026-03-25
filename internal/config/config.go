@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -54,7 +53,6 @@ func Load() (Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
-	// 🔥 КРИТИЧЕСКИ ВАЖНО: Явно связываем env vars с путями конфигурации
 	v.BindEnv("http.addr", "TASK_HTTP_ADDR")
 	v.BindEnv("mysql.dsn", "TASK_MYSQL_DSN")
 	v.BindEnv("mysql.max_open_conns", "TASK_MYSQL_MAX_OPEN_CONNS")
@@ -71,10 +69,6 @@ func Load() (Config, error) {
 	v.BindEnv("email.base_url", "TASK_EMAIL_BASE_URL")
 	v.BindEnv("email.timeout", "TASK_EMAIL_TIMEOUT")
 
-	// 🔍 Отладка
-	fmt.Println("ENV TASK_AUTH_JWTSECRET:", os.Getenv("TASK_AUTH_JWTSECRET"))
-	fmt.Println("Viper value [auth.jwt_secret]:", v.GetString("auth.jwt_secret"))
-
 	setDefault(v)
 	_ = v.ReadInConfig()
 
@@ -82,9 +76,6 @@ func Load() (Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return Config{}, fmt.Errorf("config unmarshal: %w", err)
 	}
-
-	// 🔍 Отладка после unmarshal
-	fmt.Println("After Unmarshal - cfg.Auth.JWTSecret:", cfg.Auth.JWTSecret)
 
 	if cfg.Auth.JWTSecret == "" {
 		return Config{}, fmt.Errorf("jwt secret required")
